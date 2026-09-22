@@ -8,6 +8,7 @@ This repository highlights hands-on infrastructure design, isolated bridge netwo
 
  🏗 System Architecture
 
+```text
 +-------------------------------------------------------+
 |                Remote Client Browser                  |
 +-------------------------------------------------------+
