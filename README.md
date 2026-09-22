@@ -1,40 +1,83 @@
-# A simple MERN stack application 
+# Multi-Tier Containerized MERN Architecture on AWS EC2
 
-### Create a network for the docker containers
+An end-to-end containerized production deployment of a 3-tier MERN stack (MongoDB, Express, React, Node.js) orchestrated using Docker Compose on an AWS EC2 host.
 
-`docker network create demo`
+This repository highlights hands-on infrastructure design, isolated bridge networking, stateful volume management, and resolution of real-world distributed networking challenges (client-side cross-origin routing and container engine build dependencies).
 
-### Build the client 
+---
 
-```sh
-cd mern/frontend
-docker build -t mern-frontend .
-```
+ 🏗 System Architecture
 
-### Run the client
 
-`docker run --name=frontend --network=demo -d -p 5173:5173 mern-frontend`
+       [ Remote Client Browser ]
+                   │
+                   ├── Port 5173 (React / Vite Frontend)
+                   └── Port 5050 (Express / Node.js REST API)
+                   │
+           [ AWS EC2 Instance ]
+                   │
+  ┌────────────────┴──────────────────────────────┐
+  │  Docker Engine (Bridge Network: mern_network) │
+  │                                               │
+  │   ┌───────────────┐     mongodb:27017        ┌─────────────┐
+  │   │  Backend API  ├─────────────────────────►│   MongoDB   │
+  │   │   (Node.js)   │                          │   (v7.0+)   │
+  │   └───────────────┘                          └──────┬──────┘
+  │                                                     │
+  │                                            ┌────────┴────────┐
+  │                                            │  Named Volume   │
+  │                                            │  (mongo-data)   │
+  │                                            └─────────────────┘
+  └───────────────────────────────────────────────┘
 
-### Verify the client is running
 
-Open your browser and type `http://localhost:5173`
+⚙️ Key Technical Highlights
 
-### Run the mongodb container
+ Container Orchestration: Single-command lifecycle management (docker compose) linking multi-service microcomponents.
 
-`docker run --network=demo --name mongodb -d -p 27017:27017 -v ~/opt/data:/data/db mongo:latest`
+ Isolated Networking: Custom bridge network (mern_network) isolating database traffic. The database container interacts only within the Docker internal DNS space (mongodb:27017) and does not rely on public network exposure.
 
-### Build the server
+ Persistent Storage: Stateful MongoDB data persistence via Docker named volumes (mongo-data:/data/db), ensuring zero data loss during container updates or host rebuilds.
 
-```sh
-cd mern/backend
-docker build -t mern-backend .
-```
+ Service Lifecycle Ordering: Explicit startup dependencies via depends_on ensuring reliable database readiness before backend initialization.
 
-### Run the server
 
-`docker run --name=backend --network=demo -d -p 5050:5050 mern-backend`
+🛠 Engineering Challenges & Troubleshooting
 
-## Using Docker Compose
+1. Client-Side API Resolution (Browser Execution vs Host Execution)
+   Issue: After spinning up containers on AWS EC2, employee record submissions failed. Frontend React code executes directly inside the end-user's remote browser, not on the server. Hardcoded localhost:5050 requests were reaching the client's local machine rather than the EC2 host.
 
-`docker compose up -d`
+   Resolution: Decoupled endpoints from localhost, updated API targets in Record.jsx and RecordList.jsx to dynamically target the public host interface, rebuilt the frontend image, and updated AWS Security Group ingress rules to allow traffic on port 5050.
 
+2. MongoDB v7+ Socket Inspection vs HTTP Deprecation
+   Issue: Probing curl -I http://localhost:27017 returned Empty reply from server, leading to false negatives during container health verification.
+
+   Resolution: Identified that modern MongoDB versions have completely deprecated legacy HTTP status servers. Switched verification to verbose socket connection checks (curl -v http://localhost:27017) and backend driver connection status logs.
+
+3. Missing Buildx CLI Runtime in Cloud Linux
+   Issue: Running docker compose up --build failed immediately with compose build requires buildx 0.17.0 or later on minimal cloud Linux AMIs.
+
+   Resolution: Configured the missing Docker CLI plugins directory and installed the official Buildx binary (~/.docker/cli-plugins/docker-buildx), restoring native multi-image compilation through Docker Compose v2.
+
+ 🚀 Quickstart:
+
+  Prerequisites
+
+   Docker Engine & Docker Compose v2
+
+   Open EC2 Inbound Ports: 22 (SSH), 5173 (Frontend), 5050 (Backend API)
+
+Deployment Steps 
+
+Bash
+# 1. Clone repository
+  git clone [https://github.com/pkp0023/mern-docker-compose-deployment.git](https://github.com/pkp0023/mern-docker-compose-deployment.git)
+  cd mern-docker-compose-deployment
+
+# 2. Deploy multi-container stack
+  docker compose up -d --build
+
+# 3. Verify running services
+  docker compose ps
+
+Access the UI at: http://<EC2-PUBLIC-IP>:5173
