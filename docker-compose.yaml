@@ -1,38 +1,41 @@
+version: '3.8'
+
 services:
+  mongodb:
+    image: mongo:latest
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+    networks:
+      - mern_network
+    volumes:
+      - mongo-data:/data/db
+
   backend:
     build: ./mern/backend
+    container_name: backend
     ports:
-      - "5050:5050" 
+      - "5050:5050"
     networks:
       - mern_network
     environment:
-      MONGO_URI: mongodb://mongo:27017/mydatabase  
+      - ATLAS_URI=mongodb://mongodb:27017/employees
     depends_on:
       - mongodb
 
   frontend:
     build: ./mern/frontend
+    container_name: frontened
     ports:
-      - "5173:5173"  
+      - "5173:5173"
     networks:
       - mern_network
-    environment:
-      REACT_APP_API_URL: http://backend:5050 
-
-  mongodb:
-    image: mongo:latest  
-    ports:
-      - "27017:27017"  
-    networks:
-      - mern_network
-    volumes:
-      - mongo-data:/data/db  
+    depends_on:
+      - backend
 
 networks:
   mern_network:
-    driver: bridge 
+    driver: bridge
 
 volumes:
   mongo-data:
-    driver: local  # Persist MongoDB data locally
-
