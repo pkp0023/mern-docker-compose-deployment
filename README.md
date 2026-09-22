@@ -8,27 +8,36 @@ This repository highlights hands-on infrastructure design, isolated bridge netwo
 
  🏗 System Architecture
 
-
-       [ Remote Client Browser ]
-                   │
-                   ├── Port 5173 (React / Vite Frontend)
-                   └── Port 5050 (Express / Node.js REST API)
-                   │
-           [ AWS EC2 Instance ]
-                   │
-  ┌────────────────┴──────────────────────────────┐
-  │  Docker Engine (Bridge Network: mern_network) │
-  │                                               │
-  │   ┌───────────────┐     mongodb:27017        ┌─────────────┐
-  │   │  Backend API  ├─────────────────────────►│   MongoDB   │
-  │   │   (Node.js)   │                          │   (v7.0+)   │
-  │   └───────────────┘                          └──────┬──────┘
-  │                                                     │
-  │                                            ┌────────┴────────┐
-  │                                            │  Named Volume   │
-  │                                            │  (mongo-data)   │
-  │                                            └─────────────────┘
-  └───────────────────────────────────────────────┘
++-------------------------------------------------------+
+|                Remote Client Browser                  |
++-------------------------------------------------------+
+       |                                   |
+       | HTTP (Port 5173)                  | HTTP (Port 5050)
+       v                                   v
++-------------------------------------------------------+
+|                  AWS EC2 Instance                     |
+|                                                       |
+|  [ Docker Host - Custom Network: mern_network ]       |
+|                                                       |
+|  +-------------------+       +---------------------+  |
+|  |     Frontend      |       |       Backend       |  |
+|  |   (React / Vite)  |       |  (Express / Node)   |  |
+|  +-------------------+       +----------+----------+  |
+|                                         |             |
+|                                         | mongodb:    |
+|                                         | 27017       |
+|                                         v             |
+|                              +---------------------+  |
+|                              |       MongoDB       |  |
+|                              |       (v7.0+)       |  |
+|                              +----------+----------+  |
+|                                         |             |
+|                                         v (Persists)  |
+|                              +---------------------+  |
+|                              | Named Volume        |  |
+|                              | (mongo-data)        |  |
+|                              +---------------------+  |
++-------------------------------------------------------+
 
 
 ⚙️ Key Technical Highlights
